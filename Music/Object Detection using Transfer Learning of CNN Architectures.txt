@@ -1,0 +1,145 @@
+
+# Practical 6: Transfer Learning using MobileNetV2
+
+# Step 1: Import required libraries
+import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt
+
+from tensorflow.keras.applications import MobileNetV2
+from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout, Input
+
+# Step 2: Load CIFAR-10 dataset
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+
+# Select three classes: Cat(3), Dog(5), Truck(9)
+selected_classes = [3, 5, 9]
+class_names = ['Cat', 'Dog', 'Truck']
+
+# Select training samples
+train_indices = np.isin(y_train.flatten(), selected_classes)
+test_indices = np.isin(y_test.flatten(), selected_classes)
+
+x_train = x_train[train_indices]
+y_train = y_train[train_indices]
+
+x_test = x_test[test_indices]
+y_test = y_test[test_indices]
+
+# Convert original labels into 0, 1 and 2
+y_train = np.array([selected_classes.index(i) for i in y_train.flatten()])
+y_test = np.array([selected_classes.index(i) for i in y_test.flatten()])
+
+# Use a smaller subset for faster training
+x_train = x_train[:1500]
+y_train = y_train[:1500]
+
+x_test = x_test[:300]
+y_test = y_test[:300]
+
+print("Training data:", x_train.shape)
+print("Testing data:", x_test.shape)
+
+# Step 3: Resize and preprocess images
+x_train = tf.image.resize(x_train, (96, 96)).numpy()
+x_test = tf.image.resize(x_test, (96, 96)).numpy()
+
+x_train = preprocess_input(x_train)
+x_test = preprocess_input(x_test)
+
+# Step 4: Load pretrained MobileNetV2 model
+base_model = MobileNetV2(
+    weights='imagenet',
+    include_top=False,
+    input_shape=(96, 96, 3)
+)
+
+# Step 5: Freeze pretrained layers
+base_model.trainable = False
+
+# Step 6: Add custom classifier
+inputs = Input(shape=(96, 96, 3))
+
+features = base_model(inputs, training=False)
+
+features = GlobalAveragePooling2D()(features)
+
+features = Dropout(0.3)(features)
+
+outputs = Dense(3, activation='softmax')(features)
+
+model = Model(inputs, outputs)
+
+# Display model architecture
+model.summary()
+
+# Step 7: Compile the model
+model.compile(
+    optimizer='adam',
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+# Step 8: Train the custom classifier
+history = model.fit(
+    x_train,
+    y_train,
+    epochs=3,
+    batch_size=32,
+    validation_split=0.2
+)
+
+# Step 9: Evaluate the model
+test_loss, test_accuracy = model.evaluate(x_test, y_test)
+
+print("Test Loss:", test_loss)
+print("Test Accuracy:", test_accuracy * 100, "%")
+
+# Step 10: Fine-tune the pretrained model
+base_model.trainable = True
+
+# Freeze all layers except the last 20
+for layer in base_model.layers[:-20]:
+    layer.trainable = False
+
+# Compile again with a smaller learning rate
+model.compile(
+    optimizer=tf.keras.optimizers.Adam(learning_rate=0.00001),
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+# Fine-tune the model
+fine_history = model.fit(
+    x_train,
+    y_train,
+    epochs=1,
+    batch_size=32,
+    validation_split=0.2
+)
+
+# Step 11: Evaluate the fine-tuned model
+test_loss, test_accuracy = model.evaluate(x_test, y_test)
+
+print("Fine-tuned Test Accuracy:", test_accuracy * 100, "%")
+
+# Step 12: Plot training accuracy
+plt.plot(history.history['accuracy'], label='Training Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.title('Transfer Learning Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
+
+# Step 13: Display sample predictions
+predictions = model.predict(x_test[:5])
+
+for i in range(5):
+    predicted_class = np.argmax(predictions[i])
+
+    print("Actual:", class_names[y_test[i]])
+    print("Predicted:", class_names[predicted_class])
+    print("-------------------")

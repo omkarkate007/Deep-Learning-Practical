@@ -1,0 +1,130 @@
+
+# Practical 4: Anomaly Detection using Autoencoder
+
+# Step 1: Import required libraries
+import numpy as np
+import tensorflow as tf
+import matplotlib.pyplot as plt
+
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Dense
+
+# Step 2: Generate normal training data
+np.random.seed(42)
+
+x1 = np.random.normal(0, 1, 1000)
+x2 = x1 + np.random.normal(0, 0.1, 1000)
+
+x_train = np.column_stack((x1, x2))
+
+print("Training data shape:", x_train.shape)
+
+# Step 3: Generate testing data
+# Normal testing samples
+test_x1 = np.random.normal(0, 1, 200)
+test_x2 = test_x1 + np.random.normal(0, 0.1, 200)
+
+normal_data = np.column_stack((test_x1, test_x2))
+
+# Abnormal testing samples
+anomaly_data = np.random.uniform(3, 5, (50, 2))
+
+# Combine normal and abnormal data
+x_test = np.concatenate((normal_data, anomaly_data))
+
+print("Testing data shape:", x_test.shape)
+
+# Step 4: Define the Encoder
+input_dim = x_train.shape[1]
+
+input_layer = Input(shape=(input_dim,))
+
+encoder = Dense(8, activation='relu')(input_layer)
+latent = Dense(1, activation='relu')(encoder)
+
+# Step 5: Define the Decoder
+decoder = Dense(8, activation='relu')(latent)
+output_layer = Dense(input_dim, activation='linear')(decoder)
+
+# Create Autoencoder model
+autoencoder = Model(inputs=input_layer, outputs=output_layer)
+
+# Step 6: Compile the model
+autoencoder.compile(
+    optimizer='adam',
+    loss='mse',
+    metrics=['mae']
+)
+
+# Display model architecture
+autoencoder.summary()
+
+# Step 7: Train the Autoencoder using normal data
+history = autoencoder.fit(
+    x_train,
+    x_train,
+    epochs=30,
+    batch_size=32,
+    validation_split=0.1,
+    shuffle=True
+)
+
+# Step 8: Calculate reconstruction error on training data
+train_predictions = autoencoder.predict(x_train)
+
+train_errors = np.mean(
+    np.square(x_train - train_predictions),
+    axis=1
+)
+
+# Set anomaly threshold
+threshold = np.percentile(train_errors, 95)
+
+print("Anomaly Threshold:", threshold)
+
+# Step 9: Reconstruct testing data
+test_predictions = autoencoder.predict(x_test)
+
+# Calculate reconstruction error
+test_errors = np.mean(
+    np.square(x_test - test_predictions),
+    axis=1
+)
+
+# Detect anomalies
+predictions = test_errors > threshold
+
+print("\nAnomaly Detection Results")
+print("Total Test Samples:", len(x_test))
+print("Normal Samples:", np.sum(~predictions))
+print("Anomalies Detected:", np.sum(predictions))
+
+# Step 10: Plot training loss
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.title('Autoencoder Training Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
+
+# Step 11: Visualize normal and anomalous data
+plt.figure(figsize=(8, 5))
+
+plt.scatter(
+    x_test[~predictions, 0],
+    x_test[~predictions, 1],
+    label='Normal Data'
+)
+
+plt.scatter(
+    x_test[predictions, 0],
+    x_test[predictions, 1],
+    label='Anomaly Data'
+)
+
+plt.title('Anomaly Detection using Autoencoder')
+plt.xlabel('Feature 1')
+plt.ylabel('Feature 2')
+plt.legend()
+plt.show()

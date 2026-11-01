@@ -1,0 +1,111 @@
+
+# Practical 3: Image Classification using CNN
+
+# Step 1: Import required libraries
+import tensorflow as tf
+import matplotlib.pyplot as plt
+import numpy as np
+
+from tensorflow.keras.datasets import cifar10
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
+
+# Step 2: Load CIFAR-10 dataset
+(x_train, y_train), (x_test, y_test) = cifar10.load_data()
+
+print("Training data shape:", x_train.shape)
+print("Testing data shape:", x_test.shape)
+
+# Step 3: Preprocess the image data
+x_train = x_train / 255.0
+x_test = x_test / 255.0
+
+# Define class names
+class_names = [
+    'Airplane', 'Automobile', 'Bird', 'Cat', 'Deer',
+    'Dog', 'Frog', 'Horse', 'Ship', 'Truck'
+]
+
+# Step 4: Display sample images
+plt.figure(figsize=(10, 5))
+
+for i in range(10):
+    plt.subplot(2, 5, i + 1)
+    plt.imshow(x_train[i])
+    plt.title(class_names[int(y_train[i][0])])
+    plt.axis('off')
+
+plt.tight_layout()
+plt.show()
+
+# Step 5: Define CNN model architecture
+model = Sequential([
+    Conv2D(32, (3, 3), activation='relu',
+           input_shape=(32, 32, 3)),
+
+    MaxPooling2D((2, 2)),
+
+    Conv2D(64, (3, 3), activation='relu'),
+
+    MaxPooling2D((2, 2)),
+
+    Flatten(),
+
+    Dense(64, activation='relu'),
+
+    Dense(10, activation='softmax')
+])
+
+# Display model architecture
+model.summary()
+
+# Step 6: Compile the model
+model.compile(
+    optimizer='adam',
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+# Step 7: Train the CNN model
+history = model.fit(
+    x_train,
+    y_train,
+    epochs=5,
+    batch_size=64,
+    validation_split=0.1
+)
+
+# Step 8: Evaluate model performance
+test_loss, test_accuracy = model.evaluate(x_test, y_test)
+
+print("Test Loss:", test_loss)
+print("Test Accuracy:", test_accuracy * 100, "%")
+
+# Step 9: Plot accuracy graph
+plt.plot(history.history['accuracy'], label='Training Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.title('CNN Model Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
+
+# Step 10: Plot loss graph
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.title('CNN Model Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
+
+# Step 11: Predict sample images
+predictions = model.predict(x_test[:5])
+
+for i in range(5):
+    predicted_class = np.argmax(predictions[i])
+    actual_class = int(y_test[i][0])
+
+    print("Actual:", class_names[actual_class])
+    print("Predicted:", class_names[predicted_class])
+    print("-------------------")

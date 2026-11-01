@@ -1,0 +1,31 @@
+
+# Practical 1: Study of Deep Learning Packages
+
+# Import required packages
+import tensorflow as tf
+import keras
+import torch
+
+# Display package versions
+print("Deep Learning Packages")
+
+print("\n1. TensorFlow")
+print("Version:", tf.__version__)
+print("Features: Open-source deep learning framework")
+print("Used for: Neural networks, CNN, RNN and model deployment")
+
+print("\n2. Keras")
+print("Version:", keras.__version__)
+print("Features: High-level deep learning API")
+print("Used for: Easy building and training of neural networks")
+
+print("\n3. PyTorch")
+print("Version:", torch.__version__)
+print("Features: Dynamic computation graphs")
+print("Used for: Deep learning research and neural networks")
+
+print("\n4. Theano")
+print("Features: Numerical computation and symbolic mathematical expressions")
+print("Used for: Building and optimizing mathematical models")
+
+print("\nAll available packages studied successfully!")

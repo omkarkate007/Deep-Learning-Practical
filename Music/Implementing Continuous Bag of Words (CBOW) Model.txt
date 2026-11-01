@@ -1,0 +1,126 @@
+
+# Practical 5: Continuous Bag of Words (CBOW) Model
+
+# Step 1: Import required libraries
+import numpy as np
+import tensorflow as tf
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Embedding, GlobalAveragePooling1D, Dense
+
+# Step 2: Prepare the text dataset
+sentences = [
+    "the cat sits on the mat",
+    "the dog sits on the rug",
+    "the cat sleeps on the mat",
+    "the dog sleeps on the rug",
+    "the bird sits on the tree",
+    "the cat eats the fish",
+    "the dog eats the meat",
+    "birds fly in the blue sky",
+    "fish swim in the water",
+    "the bird flies in the sky"
+]
+
+# Step 3: Tokenize the sentences
+words = []
+
+for sentence in sentences:
+    words.extend(sentence.split())
+
+# Create vocabulary
+vocabulary = sorted(set(words))
+
+word_to_index = {
+    word: index for index, word in enumerate(vocabulary)
+}
+
+index_to_word = {
+    index: word for word, index in word_to_index.items()
+}
+
+vocab_size = len(vocabulary)
+
+print("Vocabulary:", vocabulary)
+print("Vocabulary Size:", vocab_size)
+
+# Step 4: Generate CBOW training data
+window_size = 2
+
+contexts = []
+targets = []
+
+for sentence in sentences:
+    tokens = sentence.split()
+
+    for i in range(window_size, len(tokens) - window_size):
+
+        # Get surrounding context words
+        context = (
+            tokens[i - window_size:i] +
+            tokens[i + 1:i + window_size + 1]
+        )
+
+        # Convert context words into numbers
+        context_indices = [
+            word_to_index[word] for word in context
+        ]
+
+        # Target word
+        target_index = word_to_index[tokens[i]]
+
+        contexts.append(context_indices)
+        targets.append(target_index)
+
+# Convert into NumPy arrays
+X = np.array(contexts)
+y = np.array(targets)
+
+print("\nTraining Data Shape:", X.shape)
+print("Target Data Shape:", y.shape)
+
+# Step 5: Build the CBOW model
+model = Sequential([
+    Embedding(vocab_size, 16, input_shape=(4,)),
+    GlobalAveragePooling1D(),
+    Dense(64, activation='relu'),
+    Dense(vocab_size, activation='softmax')
+])
+
+# Display model architecture
+model.summary()
+
+# Step 6: Compile the model
+model.compile(
+    optimizer='adam',
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+# Step 7: Train the model
+history = model.fit(
+    X,
+    y,
+    epochs=100,
+    batch_size=4,
+    verbose=1
+)
+
+# Step 8: Predict the target word
+test_context = ["the", "cat", "on", "the"]
+
+test_indices = np.array([
+    [word_to_index[word] for word in test_context]
+])
+
+prediction = model.predict(test_indices)
+
+predicted_index = np.argmax(prediction)
+predicted_word = index_to_word[predicted_index]
+
+print("\nContext Words:", test_context)
+print("Predicted Target Word:", predicted_word)
+
+# Step 9: Display training accuracy
+print("\nFinal Training Accuracy:",
+      history.history['accuracy'][-1] * 100, "%")
